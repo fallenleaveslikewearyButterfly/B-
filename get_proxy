@@ -11,7 +11,7 @@ class Get_Proxy:
 
 
     def get_proxy(self):
-        res = requests.get("http://80161325451205093.standard.hutoudaili.com/?num=8000&area_type=0&scheme=1&anonymity=0&order=1")
+        res = requests.get("请添加自己请求的第三方代理")
         for p in res.text.split("\n"):
             proxy_ip = p.strip()
             self.proxy_list.append(proxy_ip)
