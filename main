@@ -1,0 +1,57 @@
+import aiohttp,asyncio,redis,json,random
+
+pool=redis.ConnectionPool(host="127.0.0.1",port="6379")
+
+async def main_loop():
+    async def get_valid_proxy():
+        while True:
+            try:
+                resp = await session.get("http://127.0.0.1:8888/get_proxy")
+                proxy = await resp.text(encoding="utf-8")
+                return proxy
+            except Exception as e:
+                pass
+            asyncio.sleep(1)
+
+
+    async def loop(i):
+
+        headers = {
+            "Host": "space.bilibili.com",
+            "Origin": "https://space.bilibili.com",
+            "Referer": "https://space.bilibili.com/8834176?spm_id_from=333.338.viewbox_report.5",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36"
+        }
+        url = "https://space.bilibili.com/ajax/member/GetInfo"
+        data = {
+            "mid": i,
+            "csrf": "null"
+        }
+
+        proxy = await get_valid_proxy()
+
+        try:
+            async with session.post(url=url, headers=headers, data=data, proxy=proxy, timeout=5) as resp:
+                text = await resp.json(encoding="utf-8")
+                if "服务器遇到了一些问题" in json.dumps(text, ensure_ascii=False):
+                    asyncio.sleep(3)
+                    print(f"服务器遇到了问题,{i}")
+                print(i,text)
+                r.sadd("bilibili", text)
+                r.srem("bilibili_id",i)
+        except Exception as e:
+            print(f"抓取失败，{i}")
+        asyncio.sleep(1)
+
+    sem = asyncio.Semaphore(100)
+
+    # for i in range(1,8000000):
+    #     r.sadd("bilibili_id",i)
+
+    r = redis.Redis(connection_pool=pool)
+    with await sem:
+        async with aiohttp.ClientSession() as session:
+            while r.scard("bilibili_id"):
+                await asyncio.gather(*[loop(int(id.decode("utf-8"))) for id in r.srandmember("bilibili_id",5000)])
+
+asyncio.get_event_loop().run_until_complete(main_loop())
