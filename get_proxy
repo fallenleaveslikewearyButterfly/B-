@@ -1,0 +1,45 @@
+import requests
+
+import time
+import aiohttp,asyncio
+
+class Get_Proxy:
+    def __init__(self):
+        self.ip_list_valid = list()
+        self.proxy_list = list()
+        self.valid_ip=[]
+
+
+    def get_proxy(self):
+        res = requests.get("http://80161325451205093.standard.hutoudaili.com/?num=8000&area_type=0&scheme=1&anonymity=0&order=1")
+        for p in res.text.split("\n"):
+            proxy_ip = p.strip()
+            self.proxy_list.append(proxy_ip)
+
+    async def check_proxy(self):
+        if len(self.proxy_list) == 0:
+            self.get_proxy()
+        ip=self.proxy_list.pop()
+        ip ='http://'+ ip
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url="http://ipecho.net/plain",proxy=ip,timeout=5) as resp:
+                    self.valid_ip.append(ip)
+        except Exception as e:
+            pass
+
+    def get_valid_proxy(self):
+        if len(self.valid_ip)!=0:
+            return self.valid_ip.pop()
+        else:
+            if len(self.proxy_list) == 0 :
+                self.get_proxy()
+            else:
+                asyncio.get_event_loop().run_until_complete(asyncio.gather(*[self.check_proxy() for i in range(0,len(self.proxy_list))]))
+
+            return self.get_valid_proxy()
+
+if __name__=='__main__':
+    gp = Get_Proxy()
+    print(gp.get_valid_proxy())
+
